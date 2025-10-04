@@ -1,25 +1,41 @@
 "use client";
 import { useState } from 'react';
-// We are NOT importing from aws-amplify or ../../src/graphql/mutations
+import { useRouter } from 'next/navigation';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../amplify/data/resource';
+
+// Create the client instance
+const client = generateClient<Schema>();
 
 export default function CreateProject() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleCreateProject = async (e) => {
+  // Updated function with real API call and TypeScript type
+  const handleCreateProject = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!title || !description) return;
 
     setLoading(true);
-    // Simulate a network delay
-    setTimeout(() => {
-      // Instead of calling a database, we just show an alert.
-      alert(`Project "${title}" created successfully! (This is a mock action)`);
-      setTitle('');
-      setDescription('');
+    try {
+      // This is the new, live API call
+      const { data, errors } = await client.models.Project.create({
+        title: title,
+        description: description,
+      });
+
+      if (errors) throw errors;
+
+      alert('Project created successfully!');
+      router.push('/dashboard'); // Redirect to the dashboard
+    } catch (error) {
+      console.error('Error creating project:', error);
+      alert('Error creating project. Ensure you have a Professor role.');
+    } finally {
       setLoading(false);
-    }, 500); // 0.5 second delay
+    }
   };
 
   return (
@@ -41,7 +57,7 @@ export default function CreateProject() {
           <textarea
             id="description"
             className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            rows="6"
+            rows={6}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
