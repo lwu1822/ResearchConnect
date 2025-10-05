@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
+import { useRouter } from "next/navigation";
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
@@ -9,9 +10,10 @@ const client = generateClient<Schema>();
 type Profile = Schema['Profile']['type'];
 
 export default function Profile() {
-  const { user } = useAuthenticator((context) => [context.user]);
+  const { user, signOut } = useAuthenticator((context) => [context.user, context.signOut]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const fetchProfile = useCallback(async () => {
     if (!user) return;
@@ -21,7 +23,9 @@ export default function Profile() {
       if (profiles.length > 0) {
         setProfile(profiles[0]);
       }
-    } catch (err) { console.error("Error fetching profile", err); }
+    } catch (err) { 
+      console.error("Error fetching profile", err); 
+    }
     setLoading(false);
   }, [user]);
 
@@ -29,7 +33,6 @@ export default function Profile() {
     fetchProfile();
   }, [fetchProfile]);
 
-  // FIX #1: Use the simple string union type here
   const handleSetRole = async (role: 'STUDENT' | 'PROFESSOR') => {
     try {
       const { data: newProfile, errors } = await client.models.Profile.create({
@@ -38,7 +41,18 @@ export default function Profile() {
       });
       if (errors) throw errors;
       setProfile(newProfile);
-    } catch (err) { console.error("Error creating profile", err); }
+    } catch (err) { 
+      console.error("Error creating profile", err); 
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(); 
+      router.push("/"); // redirect after logout
+    } catch (err) {
+      console.error("Error logging out", err);
+    }
   };
 
   if (loading) return <p className="p-10 text-center text-xl">Loading profile...</p>;
@@ -56,13 +70,29 @@ export default function Profile() {
         ) : (
           <div>
             <p className="text-xl mb-4">Please select your role.</p>
-            <div className="flex justify-center space-x-4">
-              {/* FIX #2: Use simple strings in the onClick */}
-              <button onClick={() => handleSetRole('STUDENT')} className="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg">I am a Student</button>
-              <button onClick={() => handleSetRole('PROFESSOR')} className="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg">I am a Professor</button>
+            <div className="flex justify-center space-x-4 mb-6">
+              <button 
+                onClick={() => handleSetRole('STUDENT')} 
+                className="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg"
+              >
+                I am a Student
+              </button>
+              <button 
+                onClick={() => handleSetRole('PROFESSOR')} 
+                className="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-6 rounded-lg"
+              >
+                I am a Professor
+              </button>
             </div>
           </div>
         )}
+        {/* Logout button */}
+        <button 
+          onClick={handleLogout} 
+          className="mt-6 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg w-full"
+        >
+          Logout
+        </button>
       </div>
     </div>
   );
